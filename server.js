@@ -21,8 +21,10 @@ app.use(bodyParser.json())
 app.use(express.json());
 
 const authRouter = require('./routes/auth');
+const addRouter = require('./routes/add');
 
 app.use('/api', authRouter);
+app.use('/api', addRouter);
 
 //port and connect to db
 const port = process.env.port || 5000;
