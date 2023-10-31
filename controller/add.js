@@ -24,70 +24,152 @@ const addLaundary = async(req,res) => {
         email
     });
 
-    addData.save().then((data, err) => {
+    addData.save().then(async (data, err) => {
         if (err) {
             console.log(err);
             res.json({message: 'databaseError'});
             return;
         } else {
-            res.json({message: 'insertedSuccess'});
+            const count = await Add.find({phonenumber}).count();
+            res.json({message: 'insertedSuccess', count:count});
             return;
         }
     })
 }
 
-const signIn = async (req, res) => {
-    console.log('/signin called');
-    console.log(req.body)
-    try {
-        if (!req.body.email || !req.body.password) {
-            res.send({
-               message: 'invalidInfo',
-            });
-        } else {
-   
-            const user = await User.findOne({ email: req.body.email });
-            
-            if (user) {
-                if (await user.authenticate(req.body.password)) {    
-                    const token = jwt.sign(
-                        { _id: user._id, role: user.role },
-                        process.env.JWT_SECRET,{ expiresIn: "30d"});
-                    const { _id, email, role, fullName } = user;
-                    req.session.email = email;
-                    const remember_me = req.body.remember_me;
-                    const updatedUser = await User.findByIdAndUpdate(_id, { remember_me }, { new: true });
-                    res.json({
-                        message:'loginSuccess',
-                        token,
-                        user: { _id, email, role, fullName },
-                        session: req.session.email
-                    });
-                } else {
-                    res.json({
-                    message: "passwordIncorrect",
-                    });
-                }
-            } else {
-                console.log(req.body);
-                res.json({
-                    message: "notRegistered",
-                    });
-            }
-        }
-    } catch (error) {
-        res.status(StatusCodes.BAD_REQUEST).json({ error });
-        console.log(error);
-    }
-  };
+const getSalesData = async(req,res) => {
+    console.log('/getSalesData called')
 
-  const logOut = (req, res)=>{
-    if(req.session.username) {
-        req.session.destroy();
-        res.send({msg:'sessionDestroyed'});
-    } else {
-        res.send({msg: 'session does not exist'});
-    }
-  }
+    let today_count = 0;
+    let today_loads = 0;
+    let week_count = 0;
+    let week_loads = 0;
+    let month_count = 0;
+    let month_loads = 0;
+    let year_count = 0;
+    let year_loads = 0;
+
+    let today_count_last = 0;
+    let today_loads_last = 0;
+    let week_count_last = 0;
+    let week_loads_last = 0;
+    let month_count_last = 0;
+    let month_loads_last = 0;
+    let year_count_last = 0;
+    let year_loads_last = 0;
+
+    const currentDate = new Date();
+    currentDate.setUTCHours(0, 0, 0, 0);
+    
+    const query = {
+      createdAt: {
+        $gte: currentDate,
+        $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
+      }
+    };    
+    await Add.find(query).then( (data, err) => {
+        if (err) {
+            console.log(err);
+            res.json({message: 'databaseError'});
+            return;
+        } else {
+            today_count = data.length;
+            today_loads = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            // const sum = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            return;
+        }
+    })
+
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+    const query1 = {
+      createdAt: {
+        $gte: startOfMonth,
+        $lt: new Date(endOfMonth.getTime() + 24 * 60 * 60 * 1000)
+      }
+    };
+    await Add.find(query1).then( (data, err) => {
+        if (err) {
+            console.log(err);
+            res.json({message: 'databaseError'});
+            return;
+        } else {
+            month_count = data.length;
+            month_loads = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            // const sum = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            return;
+        }
+    })
+
+    const firstDayOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
+    const lastDayOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay() + 6));
+    const query2 = {
+      createdAt: {
+        $gte: firstDayOfWeek,
+        $lt: lastDayOfWeek
+      }
+    };
+    await Add.find(query2).then( (data, err) => {
+        if (err) {
+            console.log(err);
+            res.json({message: 'databaseError'});
+            return;
+        } else {
+            week_count = data.length;
+            week_loads = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            // const sum = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            return;
+        }
+    })
+
+    const currentDate2 = new Date();
+    currentDate2.setUTCHours(0, 0, 0, 0);
+
+    const startOfYear = new Date(currentDate2.getFullYear(), 0, 1);
+    const endOfYear = new Date(currentDate2.getFullYear(), 11, 31);
+    const query3 = {
+      createdAt: {
+        $gte: startOfYear,
+        $lte: endOfYear
+      }
+    };
+    await Add.find(query3).then( (data, err) => {
+        if (err) {
+            console.log(err);
+            res.json({message: 'databaseError'});
+            return;
+        } else {
+            year_count = data.length;
+            year_loads = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            // const sum = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);            return;
+        }
+    })
+
+//7 days ago data
+    const currentDate1 = new Date();
+    currentDate1.setUTCHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(currentDate1.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const query4 = {
+      createdAt: {
+        $gte: sevenDaysAgo,
+        $lt: new Date(sevenDaysAgo.getTime() + 24 * 60 * 60 * 1000)
+      }
+    };
+    await Add.find(query4).then( (data, err) => {
+        if (err) {
+            console.log(err);
+            res.json({message: 'databaseError'});
+            return;
+        } else {
+            today_count_last = data.length;
+            today_loads_last = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);
+            // const sum = data.map(doc => parseInt(doc.weight)).reduce((acc, curr) => acc + curr, 0);            return;
+        }
+    })
+
+    console.log(today_loads)
+    res.send({todayCount:today_count, todayLoads: today_loads, weekCount: week_count,weekLoads: week_loads, monthCount: month_count, monthLoads: month_loads});
+}
   
-  module.exports = { addLaundary };
+module.exports = { addLaundary, getSalesData };
